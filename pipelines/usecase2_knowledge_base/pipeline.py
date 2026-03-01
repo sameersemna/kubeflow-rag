@@ -16,6 +16,9 @@ from kfp import dsl
 from kfp.dsl import Dataset, Input, Output, Artifact, Metrics, Model
 from typing import List, Dict
 import argparse
+import io
+from contextlib import redirect_stdout
+import yaml
 
 
 # ─────────────────────────────────────────────
@@ -314,7 +317,7 @@ def enterprise_kb_pipeline(
         chunk_overlap=chunk_overlap,
         enable_metadata_enrichment=enable_metadata_enrichment,
     )
-    ingest_task.set_display_name("📥 Multi-Source Ingest")
+    ingest_task.set_display_name("Multi-Source Ingest")
     ingest_task.set_cpu_request("2").set_memory_request("4Gi")
 
     # Step 2: Incremental embed & index
@@ -328,7 +331,7 @@ def enterprise_kb_pipeline(
         incremental_mode=incremental_mode,
         batch_size=batch_size,
     )
-    embed_task.set_display_name("🔢 Incremental Embed & Index")
+    embed_task.set_display_name("Incremental Embed & Index")
     embed_task.set_cpu_request("4").set_memory_request("8Gi")
 
     # Step 3: Batch Q&A Evaluation
@@ -345,7 +348,7 @@ def enterprise_kb_pipeline(
         retrieval_strategy=retrieval_strategy,
         top_k=top_k,
     )
-    eval_task.set_display_name("📊 Batch Q&A Evaluation")
+    eval_task.set_display_name("Batch Q&A Evaluation")
     eval_task.after(embed_task)
 
     # Step 4: Register API Endpoint
@@ -357,7 +360,7 @@ def enterprise_kb_pipeline(
         llm_provider=llm_provider,
         llm_model=llm_model,
     )
-    api_task.set_display_name("🌐 Register API Endpoint")
+    api_task.set_display_name("Register API Endpoint")
     api_task.after(eval_task)
 
 
@@ -369,11 +372,49 @@ def compile_pipeline(output_file: str = "enterprise_kb_pipeline.yaml"):
     print(f"Pipeline compiled to: {output_file}")
 
 
+def run_pipeline(host: str, config_path: str, experiment_name: str = "enterprise-kb"):
+    """Submit the pipeline to Kubeflow."""
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f) or {}
+
+    client = kfp.Client(host=host)
+
+    with redirect_stdout(io.StringIO()):
+        run = client.create_run_from_pipeline_func(
+            enterprise_kb_pipeline,
+            arguments={
+                "chunk_size": cfg.get("ingestion", {}).get("chunk_size", 1000),
+                "chunk_overlap": cfg.get("ingestion", {}).get("chunk_overlap", 200),
+                "embedding_provider": cfg.get("embedding", {}).get("provider", "openai"),
+                "embedding_model": cfg.get("embedding", {}).get("model", "text-embedding-3-small"),
+                "vector_store_provider": cfg.get("vector_store", {}).get("provider", "chroma"),
+                "vector_store_host": cfg.get("vector_store", {}).get("host", "chroma-service"),
+                "vector_store_collection": cfg.get("vector_store", {}).get("collection", "enterprise_kb"),
+                "retrieval_strategy": cfg.get("retrieval", {}).get("strategy", "hybrid"),
+                "top_k": cfg.get("retrieval", {}).get("top_k", 5),
+                "llm_provider": cfg.get("llm", {}).get("provider", "openai"),
+                "llm_model": cfg.get("llm", {}).get("model", "gpt-4o"),
+            },
+            experiment_name=experiment_name,
+        )
+
+    print(f"Pipeline run created: {run.run_id}")
+    return run
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--compile", action="store_true")
+    parser.add_argument("--compile", action="store_true", help="Compile pipeline to YAML")
+    parser.add_argument("--run", action="store_true", help="Submit pipeline run")
+    parser.add_argument("--host", default="http://localhost:8080")
+    parser.add_argument("--config", default="configs/config.yaml")
     parser.add_argument("--output", default="pipelines/usecase2_knowledge_base/pipeline.yaml")
+    parser.add_argument("--experiment", default="enterprise-kb")
     args = parser.parse_args()
 
     if args.compile:
+        compile_pipeline(args.output)
+    elif args.run:
+        run_pipeline(args.host, args.config, args.experiment)
+    else:
         compile_pipeline(args.output)
