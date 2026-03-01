@@ -1,0 +1,220 @@
+# ============================================================
+# Kubeflow RAG Template - Main Configuration
+# Copy this file to config.yaml and fill in your values
+# ============================================================
+
+# ----- Project Settings -----
+project:
+  name: kubeflow-rag
+  version: "1.0.0"
+  description: "Generic Kubeflow RAG Pipeline"
+  namespace: kubeflow-rag
+
+# ----- Kubeflow Settings -----
+kubeflow:
+  host: "${KUBEFLOW_HOST}"               # e.g. https://kf.example.com
+  username: "${KUBEFLOW_USERNAME}"
+  password: "${KUBEFLOW_PASSWORD}"
+  namespace: kubeflow
+  pipeline_root: "gs://your-bucket/pipeline-root"  # GCS, S3, or MinIO path
+
+# ----- LLM Provider -----
+# Supported: openai | anthropic | huggingface | ollama | azure_openai | cohere
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.1
+  max_tokens: 2048
+  timeout: 60
+  api_key: "${OPENAI_API_KEY}"
+  # For Anthropic:
+  # provider: anthropic
+  # model: claude-3-5-sonnet-20241022
+  # api_key: "${ANTHROPIC_API_KEY}"
+  # For Ollama (local):
+  # provider: ollama
+  # model: llama3.2
+  # base_url: "http://ollama-service:11434"
+  # For Azure OpenAI:
+  # provider: azure_openai
+  # model: gpt-4o
+  # api_key: "${AZURE_OPENAI_API_KEY}"
+  # azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"
+  # azure_deployment: "gpt-4o-deployment"
+
+# ----- Embedding Provider -----
+# Supported: openai | huggingface | cohere | azure_openai | ollama
+embedding:
+  provider: openai
+  model: text-embedding-3-small
+  dimensions: 1536
+  batch_size: 100
+  api_key: "${OPENAI_API_KEY}"
+  # For HuggingFace (local/free):
+  # provider: huggingface
+  # model: sentence-transformers/all-MiniLM-L6-v2
+  # device: cpu   # or cuda
+  # For Cohere:
+  # provider: cohere
+  # model: embed-english-v3.0
+  # api_key: "${COHERE_API_KEY}"
+
+# ----- Vector Store -----
+# Supported: chroma | weaviate | qdrant | pinecone | milvus | pgvector
+vector_store:
+  provider: chroma
+  collection: rag_documents
+  host: "${VECTOR_STORE_HOST:-localhost}"
+  port: 8000
+  # For Weaviate:
+  # provider: weaviate
+  # host: weaviate-service
+  # port: 8080
+  # auth_api_key: "${WEAVIATE_API_KEY}"
+  # For Qdrant:
+  # provider: qdrant
+  # host: qdrant-service
+  # port: 6333
+  # api_key: "${QDRANT_API_KEY}"
+  # For Pinecone:
+  # provider: pinecone
+  # api_key: "${PINECONE_API_KEY}"
+  # environment: us-east-1
+  # index_name: rag-index
+  # For Milvus:
+  # provider: milvus
+  # host: milvus-service
+  # port: 19530
+
+# ----- Document Ingestion -----
+ingestion:
+  chunk_size: 1000
+  chunk_overlap: 200
+  supported_formats:
+    - pdf
+    - docx
+    - html
+    - txt
+    - md
+    - csv
+    - json
+    - xlsx
+  # Text splitter strategy: recursive | character | token | sentence
+  splitter: recursive
+  # Metadata to extract
+  extract_metadata: true
+  # File size limit (MB)
+  max_file_size_mb: 100
+  # URL ingestion settings
+  web_scraping:
+    enabled: true
+    max_depth: 2
+    timeout: 30
+    user_agent: "KubeflowRAG/1.0"
+
+# ----- Retrieval Settings -----
+retrieval:
+  # Strategy: semantic | bm25 | hybrid | mmr
+  strategy: hybrid
+  top_k: 5
+  score_threshold: 0.65
+  # For hybrid search
+  hybrid:
+    dense_weight: 0.7
+    sparse_weight: 0.3
+  # For MMR (Maximal Marginal Relevance)
+  mmr:
+    fetch_k: 20
+    lambda_mult: 0.5
+  # Reranking (optional)
+  reranker:
+    enabled: false
+    provider: cohere          # cohere | cross-encoder
+    model: rerank-english-v3.0
+
+# ----- Generation / Response -----
+generation:
+  # System prompt template (use {context} and {question} placeholders)
+  system_prompt: |
+    You are a helpful AI assistant. Answer questions based on the provided context.
+    If the answer is not in the context, say so clearly.
+    Always cite your sources when possible.
+  # Response format
+  response_format: markdown   # markdown | plain | json
+  # Include source citations
+  include_sources: true
+  # Max sources to include
+  max_sources: 3
+  # Streaming (for API endpoints)
+  streaming: false
+
+# ----- Evaluation Settings -----
+evaluation:
+  enabled: true
+  # Framework: ragas | trulens | custom
+  framework: ragas
+  metrics:
+    - faithfulness
+    - answer_relevancy
+    - context_precision
+    - context_recall
+  # Minimum acceptable scores (0-1)
+  thresholds:
+    faithfulness: 0.8
+    answer_relevancy: 0.7
+    context_precision: 0.7
+    context_recall: 0.7
+  # Save evaluation results
+  output_path: "gs://your-bucket/evaluations/"
+
+# ----- Pipeline Settings -----
+pipeline:
+  # Resource limits per component
+  resources:
+    ingestion:
+      cpu: "2"
+      memory: "4Gi"
+    embedding:
+      cpu: "4"
+      memory: "8Gi"
+      gpu: "0"              # Set to "1" for GPU-accelerated embedding
+    retrieval:
+      cpu: "2"
+      memory: "4Gi"
+    generation:
+      cpu: "2"
+      memory: "4Gi"
+    evaluation:
+      cpu: "2"
+      memory: "4Gi"
+  # Docker image settings
+  images:
+    registry: "registry.io"
+    tag: "latest"
+    pull_policy: Always
+
+# ----- Storage -----
+storage:
+  # Object storage for pipeline artifacts
+  type: s3                    # s3 | gcs | azure_blob | minio
+  bucket: your-rag-bucket
+  prefix: kubeflow-rag
+  # For MinIO (local/on-prem):
+  # type: minio
+  # endpoint: http://minio-service:9000
+  # access_key: "${MINIO_ACCESS_KEY}"
+  # secret_key: "${MINIO_SECRET_KEY}"
+
+# ----- Monitoring & Logging -----
+observability:
+  log_level: INFO             # DEBUG | INFO | WARNING | ERROR
+  structured_logging: true
+  # Prometheus metrics
+  metrics:
+    enabled: true
+    port: 9090
+  # Tracing (optional)
+  tracing:
+    enabled: false
+    provider: jaeger          # jaeger | zipkin | otel
+    endpoint: "http://jaeger:14268/api/traces"

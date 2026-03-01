@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kubeflow-rag
+
+resources:
+  - namespace.yaml
+  - chroma-deployment.yaml
+  - chroma-service.yaml
+  - rag-api-deployment.yaml
+  - rag-api-service.yaml
+  - secrets.yaml
+  - configmap.yaml
+  - rbac.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: kubeflow-rag

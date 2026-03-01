@@ -1,0 +1,43 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+coverage.xml
+.coverage
+
+# Config with secrets
+configs/config.yaml
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Pipeline artifacts
+*.yaml.compiled
+pipelines/**/*.yaml
+
+# Data
+data/
+*.pdf
+*.docx
+/tmp/
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

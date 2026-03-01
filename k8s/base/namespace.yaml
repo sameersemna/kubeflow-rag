@@ -1,0 +1,7 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeflow-rag
+  labels:
+    app.kubernetes.io/part-of: kubeflow-rag

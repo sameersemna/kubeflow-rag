@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rag-sa
+  namespace: kubeflow-rag
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rag-role
+  namespace: kubeflow-rag
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rag-rolebinding
+  namespace: kubeflow-rag
+subjects:
+  - kind: ServiceAccount
+    name: rag-sa
+    namespace: kubeflow-rag
+roleRef:
+  kind: Role
+  name: rag-role
+  apiGroup: rbac.authorization.k8s.io
