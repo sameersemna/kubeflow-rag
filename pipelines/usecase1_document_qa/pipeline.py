@@ -14,6 +14,8 @@ from kfp.dsl import Dataset, Input, Output, Artifact, Metrics
 from typing import List
 import yaml
 import argparse
+import io
+from contextlib import redirect_stdout
 
 
 # ─────────────────────────────────────────────
@@ -280,7 +282,7 @@ def document_qa_pipeline(
         chunk_overlap=chunk_overlap,
         splitter_strategy=splitter_strategy,
     )
-    ingest_task.set_display_name("📥 Ingest Documents")
+    ingest_task.set_display_name("Ingest Documents")
     ingest_task.set_cpu_request("1").set_memory_request("2Gi")
 
     # Step 2: Embed & Index
@@ -292,7 +294,7 @@ def document_qa_pipeline(
         vector_store_host=vector_store_host,
         vector_store_collection=vector_store_collection,
     )
-    embed_task.set_display_name("🔢 Embed & Index")
+    embed_task.set_display_name("Embed & Index")
     embed_task.set_cpu_request("2").set_memory_request("4Gi")
 
     # Step 3: Retrieve
@@ -307,7 +309,7 @@ def document_qa_pipeline(
         retrieval_strategy=retrieval_strategy,
         top_k=top_k,
     )
-    retrieve_task.set_display_name("🔍 Retrieve Context")
+    retrieve_task.set_display_name("Retrieve Context")
     retrieve_task.after(embed_task)  # Ensure indexing done before retrieval
 
     # Step 4: Generate
@@ -320,7 +322,7 @@ def document_qa_pipeline(
         max_tokens=max_tokens,
         include_sources=include_sources,
     )
-    generate_task.set_display_name("✨ Generate Answer")
+    generate_task.set_display_name("Generate Answer")
 
     # Step 5: Evaluate
     eval_task = evaluate_rag(
@@ -330,7 +332,7 @@ def document_qa_pipeline(
         faithfulness_threshold=faithfulness_threshold,
         relevancy_threshold=relevancy_threshold,
     )
-    eval_task.set_display_name("📊 Evaluate Quality")
+    eval_task.set_display_name("Evaluate Quality")
 
 
 def compile_pipeline(output_file: str = "document_qa_pipeline.yaml"):
@@ -350,20 +352,21 @@ def run_pipeline(host: str, config_path: str, experiment_name: str = "document-q
 
     client = kfp.Client(host=host)
 
-    run = client.create_run_from_pipeline_func(
-        document_qa_pipeline,
-        arguments={
-            "embedding_provider": cfg.get("embedding", {}).get("provider", "openai"),
-            "embedding_model": cfg.get("embedding", {}).get("model", "text-embedding-3-small"),
-            "vector_store_provider": cfg.get("vector_store", {}).get("provider", "chroma"),
-            "vector_store_host": cfg.get("vector_store", {}).get("host", "chroma-service"),
-            "retrieval_strategy": cfg.get("retrieval", {}).get("strategy", "hybrid"),
-            "top_k": cfg.get("retrieval", {}).get("top_k", 5),
-            "llm_provider": cfg.get("llm", {}).get("provider", "openai"),
-            "llm_model": cfg.get("llm", {}).get("model", "gpt-4o"),
-        },
-        experiment_name=experiment_name,
-    )
+    with redirect_stdout(io.StringIO()):
+        run = client.create_run_from_pipeline_func(
+            document_qa_pipeline,
+            arguments={
+                "embedding_provider": cfg.get("embedding", {}).get("provider", "openai"),
+                "embedding_model": cfg.get("embedding", {}).get("model", "text-embedding-3-small"),
+                "vector_store_provider": cfg.get("vector_store", {}).get("provider", "chroma"),
+                "vector_store_host": cfg.get("vector_store", {}).get("host", "chroma-service"),
+                "retrieval_strategy": cfg.get("retrieval", {}).get("strategy", "hybrid"),
+                "top_k": cfg.get("retrieval", {}).get("top_k", 5),
+                "llm_provider": cfg.get("llm", {}).get("provider", "openai"),
+                "llm_model": cfg.get("llm", {}).get("model", "gpt-4o"),
+            },
+            experiment_name=experiment_name,
+        )
     print(f"Pipeline run created: {run.run_id}")
     return run
 

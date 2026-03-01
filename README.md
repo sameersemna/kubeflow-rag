@@ -125,7 +125,7 @@ cp configs/config.example.yaml configs/config.yaml
 ### 2. Set Environment Variables
 
 ```bash
-export KUBEFLOW_HOST="https://kubeflow.local"
+export KUBEFLOW_HOST="http://localhost:8080"         # using Kind for local GPU server testing, change for EKS/GKE/AKS
 export OPENAI_API_KEY="api-key"         # or other LLM provider
 export VECTOR_STORE_HOST="localhost"
 ```
@@ -152,6 +152,33 @@ kubectl apply -k k8s/overlays/development/
 kubectl apply -k k8s/overlays/production/
 ```
 
+### 4.1 Bootstrap Local Kubeflow Pipelines (kind)
+
+```bash
+# One-command local KFP setup + compatibility patches
+./scripts/setup_kfp_local.sh
+
+# Optional: start port-forward immediately
+./scripts/setup_kfp_local.sh --port-forward
+```
+
+### 4.2 Local Make Shortcuts
+
+```bash
+# Install local KFP on kind
+make kfp-local
+
+# Install local KFP and start API port-forward (http://localhost:8080)
+make kfp-local-forward
+
+# Submit local pipeline runs with strict preflight
+make submit-uc1-local
+make submit-uc2-local
+
+# Watch a submitted run until completion
+make watch-run RUN_ID=<run-id>
+```
+
 ### 5. Run a Pipeline
 
 ```bash
@@ -166,6 +193,17 @@ python scripts/run_pipeline.py \
   --pipeline pipelines/usecase2_knowledge_base/pipeline.py \
   --config configs/config.yaml \
   --experiment "enterprise-kb-experiment"
+
+# Optional preflight controls
+# - --namespace: override Kubeflow namespace used by preflight checks
+# - --strict-preflight: exit non-zero if host checks fail (no compile-only fallback)
+# - --auto-fix-namespace: retry preflight once with detected namespace suggestion
+python scripts/run_pipeline.py \
+  --pipeline pipelines/usecase1_document_qa/pipeline.py \
+  --config configs/config.yaml \
+  --namespace kubeflow \
+  --strict-preflight \
+  --auto-fix-namespace
 ```
 
 ---
