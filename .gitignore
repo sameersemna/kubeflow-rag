@@ -36,6 +36,7 @@ data/
 # IDE
 .vscode/
 .idea/
+.tmp-kind/
 *.swp
 
 # OS

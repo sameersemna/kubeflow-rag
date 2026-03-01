@@ -10,9 +10,10 @@ resources:
   - rag-api-deployment.yaml
   - rag-api-service.yaml
   - secrets.yaml
-  - configmap.yaml
   - rbac.yaml
 
-commonLabels:
-  app.kubernetes.io/managed-by: kustomize
-  app.kubernetes.io/part-of: kubeflow-rag
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/part-of: kubeflow-rag

@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: kubeflow-rag
 
-bases:
+resources:
   - ../../base
 
 # Production-specific patches
@@ -41,12 +41,20 @@ patches:
       kind: Deployment
       name: rag-api
 
-commonLabels:
-  environment: production
+  # Production config overrides
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: rag-config
+      data:
+        ENVIRONMENT: production
+        LOG_LEVEL: INFO
+    target:
+      kind: ConfigMap
+      name: rag-config
 
-configMapGenerator:
-  - name: rag-config
-    behavior: merge
-    literals:
-      - ENVIRONMENT=production
-      - LOG_LEVEL=INFO
+labels:
+  - includeSelectors: true
+    pairs:
+      environment: production

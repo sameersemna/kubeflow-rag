@@ -37,6 +37,7 @@ build_image() {
     local component=$1
     local image_name="$REGISTRY/rag-$component:$TAG"
     local dockerfile="docker/$component/Dockerfile"
+    local latest_image="$REGISTRY/rag-$component:latest"
 
     if [ ! -f "$dockerfile" ]; then
         echo "⚠️  Dockerfile not found: $dockerfile — skipping"
@@ -44,8 +45,27 @@ build_image() {
     fi
 
     echo "🔨 Building $component → $image_name"
-    docker build --file "$dockerfile" --tag "$image_name" --tag "$REGISTRY/rag-$component:latest" \
-        --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "$image_name" . # 2>&1 | tail -5
+
+    if ! docker image inspect "$image_name" >/dev/null 2>&1; then
+        docker pull "$image_name" >/dev/null 2>&1 || true
+    fi
+
+    build_cmd=(
+        docker build
+        --file "$dockerfile"
+        --tag "$image_name"
+        --tag "$latest_image"
+        --build-arg BUILDKIT_INLINE_CACHE=1
+    )
+
+    if docker image inspect "$image_name" >/dev/null 2>&1; then
+        build_cmd+=(--cache-from "$image_name")
+    else
+        echo "ℹ️  Cache source not found for $image_name; building without --cache-from"
+    fi
+
+    build_cmd+=(.)
+    "${build_cmd[@]}"
 
     echo "✅ Built: $image_name"
 
@@ -74,5 +94,19 @@ echo "✨ All builds complete!"
 echo ""
 echo "Images:"
 for component in "${COMPONENTS[@]}"; do
-    echo ">  $REGISTRY/rag-$component:$TAG"
+    if [ -f "docker/$component/Dockerfile" ]; then
+        echo ">  $REGISTRY/rag-$component:$TAG"
+    fi
+done
+
+has_skipped=false
+for component in "${COMPONENTS[@]}"; do
+    if [ ! -f "docker/$component/Dockerfile" ]; then
+        if [ "$has_skipped" = false ]; then
+            echo ""
+            echo "Skipped components:"
+            has_skipped=true
+        fi
+        echo ">  $component"
+    fi
 done

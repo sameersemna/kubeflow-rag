@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: kubeflow-rag-dev
 
-bases:
+resources:
   - ../../base
 
 # Dev-specific patches
@@ -32,14 +32,46 @@ patches:
       kind: Deployment
       name: rag-api
 
-  # Use latest tag in dev
+  # Use local dev image in kind
   - patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy
-        value: Always
+        value: IfNotPresent
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: rag-ui:latest
     target:
       kind: Deployment
       name: rag-api
 
-commonLabels:
-  environment: development
+  # Keep dev autoscaling lower
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+    target:
+      kind: HorizontalPodAutoscaler
+      name: rag-api-hpa
+
+  # Use Chroma image with v2 API probes
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: chromadb/chroma:latest
+      - op: replace
+        path: /spec/template/spec/containers/0/livenessProbe/httpGet/path
+        value: /api/v2/heartbeat
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /api/v2/heartbeat
+    target:
+      kind: Deployment
+      name: chroma
+
+labels:
+  - includeSelectors: true
+    pairs:
+      environment: development

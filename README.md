@@ -1,4 +1,5 @@
 # 🚀 Kubeflow RAG Template
+## by [Unbiased Talent](URL "https://unbiasedtalent.com/") & [PrüfAI](URL "https://prufai.de/")
 
 A production-ready, reusable, and extensible **Retrieval-Augmented Generation (RAG)** framework built on **Kubeflow Pipelines**, designed for enterprise-scale AI/ML workloads.
 
@@ -34,10 +35,10 @@ This template provides a **modular, scalable RAG pipeline** that runs on Kubeflo
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Kubeflow Pipelines                           │
 │                                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │
-│  │Ingestion │→ │Embedding │→ │Retrieval │→ │   Generation     │   │
-│  │Component │  │Component │  │Component │  │   Component      │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐     │
+│  │Ingestion │→ │Embedding │→ │Retrieval │→ │   Generation     │     │
+│  │Component │  │Component │  │Component │  │   Component      │     │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘     │
 │        │             │             │                │               │
 │        └─────────────┴─────────────┴────────────────┘               │
 │                              │                                      │
@@ -138,6 +139,8 @@ export VECTOR_STORE_HOST="localhost"
 # Push all images
 ./scripts/push_all.sh --registry docker.io --tag v1.0.0
 ```
+
+> **Note:** If `docker/retrieval/Dockerfile` is missing, the build script will skip the `retrieval` component and list it under **Skipped components** in the final summary. Add `docker/retrieval/Dockerfile` to enable building `rag-retrieval`.
 
 ### 4. Deploy Infrastructure
 
